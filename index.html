@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>67 Game</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #1a1a2e; 
+            color: white; 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+        }
+        /* The hands */
+        .hand { 
+            position: absolute; 
+            font-size: 100px; 
+            z-index: 0; 
+            transition: transform 0.05s ease-out; 
+            pointer-events: none;
+        }
+        /* Adjusted positioning so they frame the screen nicely */
+        #left-hand { left: 20%; }
+        #right-hand { right: 20%; } 
+        
+        /* The UI */
+        .ui { 
+            z-index: 10; 
+            text-align: center; 
+            background: rgba(0, 0, 0, 0.85); 
+            padding: 30px; 
+            border-radius: 15px; 
+            pointer-events: none; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border: 2px solid #e94560;
+        }
+        .controls { 
+            margin-top: 20px; 
+            pointer-events: auto; 
+        }
+        button { 
+            font-size: 18px; 
+            padding: 10px 20px; 
+            margin: 5px; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 5px; 
+            background: #e94560; 
+            color: white; 
+            font-weight: bold; 
+            transition: background 0.2s;
+        }
+        button:hover { background: #d33850; }
+        button:disabled { background: #555; color: #888; cursor: not-allowed; }
+        h1 { margin: 0 0 10px 0; font-size: 3rem; }
+        #timer { color: #f9a03f; font-size: 2.5rem; font-weight: bold; margin: 10px 0; }
+        #message { font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+    <div id="left-hand" class="hand">🫱</div>
+    <div id="right-hand" class="hand">🫲</div>
+
+    <div class="ui">
+        <h1>67 Game</h1>
+        <h2>Oscillations: <span id="score">0</span></h2>
+        <div id="timer">10.0s</div>
+        <p id="message">Move mouse UP and DOWN rapidly!</p>
+        <div class="controls">
+            <button id="start-btn">Start</button>
+            <button id="pause-btn" disabled>Pause</button>
+            <button id="restart-btn" disabled>Restart</button>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let timeLeft = 10.0;
+        let isPlaying = false;
+        let timerInterval;
+        let lastY = null;
+        let currentDirection = null; 
+        let swings = 0; 
+
+        const scoreEl = document.getElementById('score');
+        const timerEl = document.getElementById('timer');
+        const messageEl = document.getElementById('message');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const leftHand = document.getElementById('left-hand');
+        const rightHand = document.getElementById('right-hand');
+
+        const centerY = window.innerHeight / 2;
+        
+        // Initial setup
+        leftHand.style.top = `${centerY - 50}px`;
+        rightHand.style.top = `${centerY - 50}px`;
+
+        function updateTimer() {
+            if (timeLeft <= 0.1) { 
+                endGame();
+                return;
+            }
+            timeLeft -= 0.1;
+            timerEl.innerText = timeLeft.toFixed(1) + 's';
+        }
+
+        function startGame() {
+            if (timeLeft <= 0) resetGame();
+            isPlaying = true;
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            restartBtn.disabled = false;
+            messageEl.innerText = "KEEP GOING!! 🧠📉";
+            timerInterval = setInterval(updateTimer, 100);
+        }
+
+        function pauseGame() {
+            isPlaying = false;
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            clearInterval(timerInterval);
+            if (timeLeft > 0) messageEl.innerText = "Paused";
+        }
+
+        function resetGame() {
+            pauseGame();
+            score = 0;
+            swings = 0;
+            timeLeft = 10.0;
+            lastY = null;
+            currentDirection = null;
+            scoreEl.innerText = score;
+            timerEl.innerText = '10.0s';
+            messageEl.innerText = "Move mouse UP and DOWN rapidly!";
+            startBtn.disabled = false;
+            restartBtn.disabled = true;
+            leftHand.style.transform = `translateY(0px)`;
+            rightHand.style.transform = `translateY(0px)`;
+        }
+
+        function endGame() {
+            pauseGame();
+            timerEl.innerText = '0.0s';
+            startBtn.disabled = true;
+            pauseBtn.disabled = true;
+            messageEl.innerText = `Time's up! Final Score: ${score} 67s!`;
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            const yOffset = e.clientY - centerY;
+            
+            // Right hand tracks the mouse directly
+            rightHand.style.transform = `translateY(${yOffset}px)`;
+            
+            // Left hand moves in the EXACT opposite direction (-yOffset)
+            leftHand.style.transform = `translateY(${-yOffset}px)`;
+
+            if (!isPlaying) return;
+
+            if (lastY !== null) {
+                const deltaY = e.clientY - lastY;
+                
+                if (Math.abs(deltaY) > 15) { 
+                    const newDir = deltaY > 0 ? 1 : -1;
+                    
+                    if (currentDirection !== null && newDir !== currentDirection) {
+                        swings++;
+                        score = Math.floor(swings / 2); 
+                        scoreEl.innerText = score;
+                    }
+                    currentDirection = newDir;
+                }
+            }
+            lastY = e.clientY;
+        });
+
+        startBtn.addEventListener('click', startGame);
+        pauseBtn.addEventListener('click', pauseGame);
+        restartBtn.addEventListener('click', resetGame);
+    </script>
+</body>
+</html>
